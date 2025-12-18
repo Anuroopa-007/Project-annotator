@@ -1,55 +1,93 @@
-from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QPushButton, QFileDialog, QMessageBox
+from PyQt5.QtWidgets import (
+    QMainWindow, QWidget, QHBoxLayout, QMessageBox, QFileDialog
+)
 from ui.canvas.image_view import ImageView
+from ui.sidebar import Sidebar
 from services.annotation_service import AnnotationService
 from formats.yolo import YOLOExporter
 from services.auto_annotate_service import AutoAnnotateService
+import os
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+
         self.setWindowTitle("CV Annotator")
-        self.resize(1200, 800)
+        self.resize(1400, 900)
 
-        # Annotation service
+        self.current_model_path = "models/pretrained/yolov8n.pt"
+        self.image_paths = []
+        self.current_image_index = 0
+
+        # Services
         self.annotation_service = AnnotationService()
-
-        # Image view (canvas)
         self.image_view = ImageView(self.annotation_service)
 
-        # Buttons
-        load_btn = QPushButton("Load Image")
-        save_btn = QPushButton("Save YOLO")
-        auto_btn = QPushButton("Auto Annotate")
-
-        # Connect buttons
-        load_btn.clicked.connect(self.load_image)
-        save_btn.clicked.connect(self.save_yolo)
-        auto_btn.clicked.connect(self.auto_annotate)
-
         # Layout
-        layout = QVBoxLayout()
-        layout.addWidget(load_btn)
-        layout.addWidget(auto_btn)
-        layout.addWidget(save_btn)
+        central = QWidget()
+        layout = QHBoxLayout(central)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        self.sidebar = Sidebar(self)
+        layout.addWidget(self.sidebar)
         layout.addWidget(self.image_view)
 
-        container = QWidget()
-        container.setLayout(layout)
-        self.setCentralWidget(container)
+        self.setCentralWidget(central)
 
-    # -----------------------------
+    # ------------------------
     def load_image(self):
         path, _ = QFileDialog.getOpenFileName(
-            self, "Open Image", "", "Images (*.jpg *.png *.jpeg)"
+            self, "Open Image", "", "Images (*.jpg *.png *.jpeg *.bmp)"
         )
         if path:
+            self.annotation_service.clear()
             self.image_view.load_image(path)
+            self.sidebar.set_status(f"Loaded: {os.path.basename(path)}")
 
-    # -----------------------------
+    # ------------------------
+    def load_folder(self):
+        folder = QFileDialog.getExistingDirectory(self, "Select Image Folder")
+        if not folder:
+            return
+
+        exts = ('.jpg', '.jpeg', '.png', '.bmp')
+        self.image_paths = sorted([
+            os.path.join(folder, f)
+            for f in os.listdir(folder)
+            if f.lower().endswith(exts)
+        ])
+
+        if not self.image_paths:
+            QMessageBox.warning(self, "Empty", "No images found")
+            return
+
+        self.sidebar.populate_images(self.image_paths)
+        self.current_image_index = 0
+        self.load_image_from_list(self.image_paths[0])
+        self.sidebar.set_status(f"{len(self.image_paths)} images loaded")
+
+    # ------------------------
+    def load_image_from_list(self, path):
+        # Auto-save previous image
+        if self.annotation_service.annotations:
+            YOLOExporter.export(
+                image_path=self.image_view.image_path,
+                annotations=self.annotation_service.annotations
+            )
+
+        self.annotation_service.clear()
+        self.image_view.load_image(path)
+        self.sidebar.set_status(f"Loaded: {os.path.basename(path)}")
+
+    # ------------------------
     def save_yolo(self):
-        if not self.image_view.image_path or not self.annotation_service.annotations:
-            QMessageBox.warning(self, "Error", "No image or annotations to save")
+        if not self.image_view.image_path:
+            QMessageBox.warning(self, "Error", "No image loaded")
+            return
+
+        if not self.annotation_service.annotations:
+            QMessageBox.warning(self, "Error", "No annotations to save")
             return
 
         YOLOExporter.export(
@@ -57,32 +95,33 @@ class MainWindow(QMainWindow):
             annotations=self.annotation_service.annotations
         )
 
-        QMessageBox.information(
-            self,
-            "Saved Successfully ✅",
-            f"YOLO labels saved for:\n{self.image_view.image_path}"
-        )
+        self.sidebar.set_status("YOLO saved ✔")
 
-    # -----------------------------
+    # ------------------------
     def auto_annotate(self):
         if not self.image_view.image_path:
-            QMessageBox.warning(self, "Error", "Load an image first")
+            QMessageBox.warning(self, "Error", "Load image first")
             return
 
-        model_path = "models/pretrained/yolov8n.pt"
-        service = AutoAnnotateService(model_path)
+        service = AutoAnnotateService(self.current_model_path)
+        predictions = service.predict(self.image_view.image_path, conf=0.25)
 
-        # Run prediction
-        predictions = service.predict(
-            self.image_view.image_path,
-            conf=0.25
-        )
-
-        # Add boxes to the scene (this should create BBoxItems in your canvas)
         self.image_view.scene.add_auto_boxes(predictions)
+        self.sidebar.set_status(f"Auto: {len(predictions)} objects")
 
+    # ------------------------
+    def on_model_changed(self, text):
+        if "yolov8n" in text:
+            self.current_model_path = "models/pretrained/yolov8n.pt"
+        elif "yolov8s" in text:
+            self.current_model_path = "models/pretrained/yolov8s.pt"
+        elif "yolov8m" in text:
+            self.current_model_path = "models/pretrained/yolov8m.pt"
+
+    # ------------------------
+    def export_dataset(self):
         QMessageBox.information(
             self,
-            "Auto Annotation Complete",
-            f"Detected {len(predictions)} objects"
+            "Export",
+            "Dataset export coming soon (YOLO / COCO / VOC)"
         )
