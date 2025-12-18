@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QGraphicsScene
-from PyQt5.QtCore import QRectF
+from PyQt5.QtWidgets import QGraphicsScene, QInputDialog
+from PyQt5.QtCore import QRectF, Qt
 from ui.canvas.bbox_item import BBoxItem
 import os
 
@@ -10,6 +10,41 @@ class AnnotationScene(QGraphicsScene):
         self.annotation_service = annotation_service
         self.image_item = None
         self.image_path = None
+        self.start_pos = None
+        self.temp_rect = None
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.start_pos = event.scenePos()
+            self.temp_rect = self.addRect(QRectF(), pen=Qt.red)
+
+    # -----------------------------
+    def mouseMoveEvent(self, event):
+        if self.temp_rect:
+            rect = QRectF(self.start_pos, event.scenePos()).normalized()
+            self.temp_rect.setRect(rect)
+
+    # -----------------------------
+    def mouseReleaseEvent(self, event):
+        if not self.temp_rect:
+            return
+
+        rect = self.temp_rect.rect()
+        self.removeItem(self.temp_rect)
+        self.temp_rect = None
+
+        if rect.width() < 10 or rect.height() < 10:
+            return
+
+        # 🔹 Ask object name
+        label, ok = QInputDialog.getText(
+            None, "Object Name", "Enter object name:"
+        )
+
+        if ok and label.strip():
+            bbox = BBoxItem(rect, label)
+            self.addItem(bbox)
+            self.annotation_service.add(label, rect)
 
     # -----------------------------
     def load_image(self, path):
