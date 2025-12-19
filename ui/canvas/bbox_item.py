@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import QGraphicsRectItem, QGraphicsTextItem
 from PyQt5.QtGui import QPen, QFont
 from PyQt5.QtCore import Qt
+from utils.colors import get_color
 
 
 class BBoxItem(QGraphicsRectItem):
@@ -11,11 +12,12 @@ class BBoxItem(QGraphicsRectItem):
         """
         super().__init__(rect)
         self.label = label
-        self.setPen(QPen(Qt.red, 2))
+        color = get_color(label)
+        self.setPen(QPen(color, 2))
 
         # Add label text
         self.text_item = QGraphicsTextItem(label, self)
-        self.text_item.setDefaultTextColor(Qt.red)
+        self.text_item.setDefaultTextColor(color)
         font = QFont()
         font.setPointSize(10)
         font.setBold(True)

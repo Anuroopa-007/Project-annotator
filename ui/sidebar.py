@@ -68,15 +68,22 @@ class Sidebar(QWidget):
         layout.addWidget(image_group)
 
         # ===== ANNOTATIONS =====
+        # ===== ANNOTATIONS =====
         ann_group = QGroupBox("Annotations")
         ann_layout = QVBoxLayout()
 
         save_btn = QPushButton("💾 Save YOLO")
         save_btn.clicked.connect(self.parent.save_yolo)
 
+        train_btn = QPushButton("🚀 Train YOLO")
+        train_btn.clicked.connect(self.parent.train_model)
+
         ann_layout.addWidget(save_btn)
+        ann_layout.addWidget(train_btn)
+
         ann_group.setLayout(ann_layout)
         layout.addWidget(ann_group)
+
 
         # ===== MODELS =====
         model_group = QGroupBox("Models")
