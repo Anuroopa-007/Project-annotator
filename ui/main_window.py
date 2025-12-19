@@ -1,12 +1,16 @@
+import os
 from PyQt5.QtWidgets import (
-    QMainWindow, QWidget, QHBoxLayout, QMessageBox, QFileDialog
+    QMainWindow, QWidget, QHBoxLayout,
+    QMessageBox, QFileDialog
 )
+
 from ui.canvas.image_view import ImageView
 from ui.sidebar import Sidebar
 from services.annotation_service import AnnotationService
 from formats.yolo import YOLOExporter
 from services.auto_annotate_service import AutoAnnotateService
-import os
+from services.dataset_service import create_data_yaml
+from services.training_service import train_yolo
 
 
 class MainWindow(QMainWindow):
@@ -51,12 +55,12 @@ class MainWindow(QMainWindow):
         if not folder:
             return
 
-        exts = ('.jpg', '.jpeg', '.png', '.bmp')
-        self.image_paths = sorted([
+        exts = (".jpg", ".jpeg", ".png", ".bmp")
+        self.image_paths = sorted(
             os.path.join(folder, f)
             for f in os.listdir(folder)
             if f.lower().endswith(exts)
-        ])
+        )
 
         if not self.image_paths:
             QMessageBox.warning(self, "Empty", "No images found")
@@ -73,7 +77,8 @@ class MainWindow(QMainWindow):
         if self.annotation_service.annotations:
             YOLOExporter.export(
                 image_path=self.image_view.image_path,
-                annotations=self.annotation_service.annotations
+                annotations=self.annotation_service.annotations,
+                dataset_path="storage/datasets/default"
             )
 
         self.annotation_service.clear()
@@ -92,9 +97,12 @@ class MainWindow(QMainWindow):
 
         YOLOExporter.export(
             image_path=self.image_view.image_path,
-            annotations=self.annotation_service.annotations
+            annotations=self.annotation_service.annotations,
+            dataset_path="storage/datasets/default",
+            split="train" 
         )
 
+        create_data_yaml("storage/datasets/default")
         self.sidebar.set_status("YOLO saved ✔")
 
     # ------------------------
@@ -117,6 +125,37 @@ class MainWindow(QMainWindow):
             self.current_model_path = "models/pretrained/yolov8s.pt"
         elif "yolov8m" in text:
             self.current_model_path = "models/pretrained/yolov8m.pt"
+
+    # ------------------------
+    def train_model(self):
+        dataset_path = "storage/datasets/default"
+        data_yaml = f"{dataset_path}/data.yaml"
+
+        if not os.path.exists(data_yaml):
+            QMessageBox.warning(
+                self,
+                "Missing data.yaml",
+                "Please save YOLO annotations first."
+            )
+            return
+
+        QMessageBox.information(
+            self,
+            "Training Started",
+            "Training has started.\nThis may take several minutes.\nCheck terminal logs."
+        )
+
+        train_yolo(
+            data_yaml=data_yaml,
+            base_model=self.current_model_path,
+            output_dir="models/trained/default"
+        )
+
+        QMessageBox.information(
+            self,
+            "Training Finished",
+            "Training complete!\nCheck models/trained/default/v1/best.pt"
+        )
 
     # ------------------------
     def export_dataset(self):
