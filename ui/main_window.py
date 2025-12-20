@@ -13,6 +13,8 @@ from formats.yolo import YOLOExporter
 from services.auto_annotate_service import AutoAnnotateService
 from services.dataset_service import create_data_yaml
 from services.training_service import train_yolo
+from services.export_service import export_yolo_dataset
+
 
 
 class MainWindow(QMainWindow):
@@ -175,8 +177,7 @@ class MainWindow(QMainWindow):
 
     # ------------------------
     def export_dataset(self):
-        QMessageBox.information(
-            self,
-            "Export",
-            "Dataset export coming soon (YOLO / COCO / VOC)"
-        )
+     export_yolo_dataset(
+        parent=self,
+        dataset_path="storage/datasets/default"
+    )

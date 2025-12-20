@@ -62,6 +62,10 @@ class TopBar(QWidget):
 
         self.train_btn = QPushButton("🚀 Train YOLO")
         self.train_btn.clicked.connect(parent.train_model)
+        self.export_btn = QPushButton("📦 Export YOLO")
+        self.export_btn.clicked.connect(parent.export_dataset)
+        layout.addWidget(self.export_btn)
+ 
 
         layout.addWidget(self.auto_btn)
         layout.addWidget(self.save_btn)
