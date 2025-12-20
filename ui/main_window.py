@@ -1,11 +1,13 @@
+# main_window.py
 import os
 from PyQt5.QtWidgets import (
-    QMainWindow, QWidget, QHBoxLayout,
+    QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QMessageBox, QFileDialog
 )
 
 from ui.canvas.image_view import ImageView
 from ui.sidebar import Sidebar
+from ui.topbar import TopBar  # Import the new TopBar
 from services.annotation_service import AnnotationService
 from formats.yolo import YOLOExporter
 from services.auto_annotate_service import AutoAnnotateService
@@ -18,7 +20,7 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("CV Annotator")
-        self.resize(1400, 900)
+        self.resize(1600, 900)
 
         self.current_model_path = "models/pretrained/yolov8n.pt"
         self.image_paths = []
@@ -28,16 +30,29 @@ class MainWindow(QMainWindow):
         self.annotation_service = AnnotationService()
         self.image_view = ImageView(self.annotation_service)
 
-        # Layout
-        central = QWidget()
-        layout = QHBoxLayout(central)
-        layout.setContentsMargins(0, 0, 0, 0)
+        # === MAIN LAYOUT WITH TOPBAR ===
+        central_widget = QWidget()
+        main_layout = QVBoxLayout(central_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        # 1. Add TopBar at the top
+        self.topbar = TopBar(self)
+        main_layout.addWidget(self.topbar)
+
+        # 2. Content area: Sidebar (left) + Image View (right)
+        content_layout = QHBoxLayout()
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(0)
 
         self.sidebar = Sidebar(self)
-        layout.addWidget(self.sidebar)
-        layout.addWidget(self.image_view)
+        content_layout.addWidget(self.sidebar)
+        content_layout.addWidget(self.image_view, stretch=1)  # Image view takes most space
 
-        self.setCentralWidget(central)
+        main_layout.addLayout(content_layout)
+
+        # Set the central widget
+        self.setCentralWidget(central_widget)
 
     # ------------------------
     def load_image(self):
@@ -73,8 +88,8 @@ class MainWindow(QMainWindow):
 
     # ------------------------
     def load_image_from_list(self, path):
-        # Auto-save previous image
-        if self.annotation_service.annotations:
+        # Auto-save previous image annotations
+        if self.annotation_service.annotations and hasattr(self.image_view, 'image_path') and self.image_view.image_path:
             YOLOExporter.export(
                 image_path=self.image_view.image_path,
                 annotations=self.annotation_service.annotations,
@@ -84,10 +99,11 @@ class MainWindow(QMainWindow):
         self.annotation_service.clear()
         self.image_view.load_image(path)
         self.sidebar.set_status(f"Loaded: {os.path.basename(path)}")
+        self.sidebar.highlight_current_image(path)
 
     # ------------------------
     def save_yolo(self):
-        if not self.image_view.image_path:
+        if not hasattr(self.image_view, 'image_path') or not self.image_view.image_path:
             QMessageBox.warning(self, "Error", "No image loaded")
             return
 
@@ -99,15 +115,15 @@ class MainWindow(QMainWindow):
             image_path=self.image_view.image_path,
             annotations=self.annotation_service.annotations,
             dataset_path="storage/datasets/default",
-            split="train" 
+            split="train"
         )
 
         create_data_yaml("storage/datasets/default")
-        self.sidebar.set_status("YOLO saved ✔")
+        self.sidebar.set_status("YOLO saved")
 
     # ------------------------
     def auto_annotate(self):
-        if not self.image_view.image_path:
+        if not hasattr(self.image_view, 'image_path') or not self.image_view.image_path:
             QMessageBox.warning(self, "Error", "Load image first")
             return
 
@@ -152,7 +168,7 @@ class MainWindow(QMainWindow):
         )
 
         QMessageBox.information(
-            self,
+            self, 
             "Training Finished",
             "Training complete!\nCheck models/trained/default/v1/best.pt"
         )
