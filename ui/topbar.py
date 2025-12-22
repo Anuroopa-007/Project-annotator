@@ -40,6 +40,11 @@ class TopBar(QWidget):
         self.open_folder_btn = QPushButton("📁 Open Folder")
         self.open_folder_btn.clicked.connect(parent.load_folder)
 
+        self.open_video_btn = QPushButton("🎥 Open Video")
+        self.open_video_btn.clicked.connect(parent.load_video)
+        layout.insertWidget(1, self.open_video_btn)
+
+
         layout.addWidget(self.open_image_btn)
         layout.addWidget(self.open_folder_btn)
 

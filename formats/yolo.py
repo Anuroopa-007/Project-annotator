@@ -8,7 +8,7 @@ class YOLOExporter:
     def export(image_path, annotations, dataset_path, split="train"):
         """
         image_path: path to image file
-        annotations: [(label, QRectF), ...]
+        annotations: [(label, QRectF, ...), ...] or [(label, QRectF), ...]
         dataset_path: storage/datasets/<dataset_name>
         split: 'train' or 'val'
         """
@@ -35,7 +35,12 @@ class YOLOExporter:
         class_map = {}
         lines = []
 
-        for label, rect in annotations:
+        for ann in annotations:
+            # Ensure only label and rect are used
+            if len(ann) < 2:
+                continue  # skip invalid annotation
+            label, rect = ann[:2]
+
             if label not in class_map:
                 class_map[label] = len(class_map)
                 class_names.append(label)
