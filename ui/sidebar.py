@@ -1,108 +1,72 @@
-# sidebar.py
+# sidebar.py (updated)
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QListWidget, QListWidgetItem,
     QHBoxLayout, QPushButton
 )
 from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QPixmap, QIcon
+from PyQt5.QtGui import QPixmap, QIcon, QFont
 import os
 import math
 
+from ui.themes import THEMES  # Correct import since themes.py is in ui/
 
 class Sidebar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
-        self.setFixedWidth(280)
-        self.setStyleSheet("""
-            QWidget { background-color: #1e1e1e; color: #ffffff; }
-            QLabel { color: #aaa; font-size: 13px; padding: 10px; }
-            QListWidget {
-                background-color: #252526;
-                border: none;
-                outline: none;
-            }
-            QListWidget::item {
-                padding: 8px;
-                border-bottom: 1px solid #333;
-            }
-            QListWidget::item:selected {
-                background-color: #007acc;
-                border-left: 4px solid #007acc;
-            }
-            QListWidget::item:hover {
-                background-color: #2d2d30;
-            }
-            QPushButton {
-                background-color: #333;
-                color: #ccc;
-                border: none;
-                padding: 8px;
-            }
-            QPushButton:hover { background-color: #444; }
-            QPushButton:disabled { color: #666; }
-        """)
+        self.setFixedWidth(300)
+        self.current_theme = "dark"  # Default
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
 
         # Title
         title = QLabel("Images")
-        title.setStyleSheet("font-size: 16px; font-weight: bold; padding: 20px 15px 10px;")
-        title.setAlignment(Qt.AlignCenter)
+        title.setFont(QFont('Segoe UI', 16, QFont.Bold))
+        title.setAlignment(Qt.AlignLeft)
         layout.addWidget(title)
 
         # Image count
         self.count_label = QLabel("0 images")
-        self.count_label.setAlignment(Qt.AlignCenter)
-        self.count_label.setStyleSheet("color: #888; padding-bottom: 10px;")
+        self.count_label.setAlignment(Qt.AlignLeft)
         layout.addWidget(self.count_label)
+
         # Detected object counts
         self.detect_label = QLabel("Detected:\n—")
         self.detect_label.setAlignment(Qt.AlignLeft)
-        self.detect_label.setStyleSheet("""
-            padding: 10px 15px;
-            font-size: 13px;
-            color: #ddd;
-        """)
+        self.detect_label.setStyleSheet("background-color: transparent; padding: 12px 0;")
         layout.addWidget(self.detect_label)
-
 
         # Thumbnail list
         self.image_list = QListWidget()
-        self.image_list.setIconSize(QSize(240, 135))  # Wide thumbnails
+        self.image_list.setIconSize(QSize(280, 158))
         self.image_list.setViewMode(QListWidget.ListMode)
         self.image_list.setResizeMode(QListWidget.Adjust)
         self.image_list.setMovement(QListWidget.Static)
-        self.image_list.setSpacing(0)
+        self.image_list.setSpacing(6)
 
         self.image_list.itemClicked.connect(self.on_image_clicked)
         layout.addWidget(self.image_list)
 
         # Pagination
         pag_layout = QHBoxLayout()
-        pag_layout.setContentsMargins(10, 10, 10, 10)
-
         self.prev_btn = QPushButton("◀ Previous")
         self.next_btn = QPushButton("Next ▶")
         self.page_label = QLabel("1 / 1")
-
         self.prev_btn.clicked.connect(self.prev_page)
         self.next_btn.clicked.connect(self.next_page)
-
         pag_layout.addWidget(self.prev_btn)
         pag_layout.addStretch()
         pag_layout.addWidget(self.page_label)
         pag_layout.addStretch()
         pag_layout.addWidget(self.next_btn)
-
         layout.addLayout(pag_layout)
 
         # Bottom status
         self.status_label = QLabel("Ready")
         self.status_label.setAlignment(Qt.AlignCenter)
-        self.status_label.setStyleSheet("background-color: #007acc; padding: 10px; font-size: 13px;")
+        self.status_label.setStyleSheet("padding: 12px; font-size: 14px; border-radius: 4px;")
         layout.addWidget(self.status_label)
 
         # State
@@ -110,6 +74,29 @@ class Sidebar(QWidget):
         self.current_page = 0
         self.items_per_page = 6
         self.path_to_item = {}
+
+        self.apply_theme(self.current_theme)
+
+    def apply_theme(self, theme_name: str):
+        self.current_theme = theme_name
+        t = THEMES[theme_name]
+        self.setStyleSheet(f"""
+            QWidget {{ background-color: {t['bg']}; }}
+            QLabel {{ color: {t['text_secondary']}; }}
+            QListWidget {{ background-color: {t['surface']}; border: 1px solid {t['border']}; }}
+            QListWidget::item:selected {{ background-color: {t['selected']}; }}
+            QListWidget::item:hover {{ background-color: {t['surface2']}; }}
+            QPushButton {{ background-color: {t['surface']}; color: {t['text']}; }}
+            QPushButton:hover {{ background-color: {t['surface2']}; }}
+            QPushButton:disabled {{ color: #666; }}
+            .status {{ background-color: {t['status']}; color: white; }}
+        """)
+        self.status_label.setProperty("class", "status")  # For status bg
+        self.status_label.style().unpolish(self.status_label)
+        self.status_label.style().polish(self.status_label)
+
+    # Rest of methods unchanged...
+    # (populate_images, update_page, etc. remain the same)
 
     def populate_images(self, image_paths):
         self.all_image_paths = image_paths
@@ -138,9 +125,9 @@ class Sidebar(QWidget):
             if pixmap.isNull():
                 continue
 
-            thumb = pixmap.scaled(240, 135, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
-            if thumb.width() > 240 or thumb.height() > 135:
-                thumb = thumb.copy((thumb.width()-240)//2, (thumb.height()-135)//2, 240, 135)
+            thumb = pixmap.scaled(280, 158, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+            if thumb.width() > 280 or thumb.height() > 158:
+                thumb = thumb.copy((thumb.width()-280)//2, (thumb.height()-158)//2, 280, 158)
 
             icon = QIcon(thumb)
             item = QListWidgetItem(icon, filename)
@@ -190,7 +177,7 @@ class Sidebar(QWidget):
             return
 
         text = "Detected:\n"
-        for cls, num in counts.items():
-            text += f"{cls}: {num}\n"
+        for cls, num in sorted(counts.items()):
+            text += f"• {cls}: {num}\n"
 
         self.detect_label.setText(text.strip())

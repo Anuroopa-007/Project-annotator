@@ -1,48 +1,24 @@
-# topbar.py
+# ui/topbar.py - COMPLETE REPLACEMENT (Theme Support + All Buttons)
 from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QPushButton, QLabel, QComboBox
 )
 from PyQt5.QtCore import Qt
-
+from PyQt5.QtGui import QFont
+import os
+from ui.themes import THEMES, get_stylesheet  # Correct path
 
 class TopBar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
-
-        self.setFixedHeight(60)
-        self.setStyleSheet("""
-            QWidget { background-color: #1e1e1e; border-bottom: 1px solid #333; }
-            QPushButton {
-                background-color: #007acc;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
-                min-width: 100px;
-            }
-            QPushButton:hover { background-color: #005a9e; }
-            QLabel { color: white; font-size: 14px; padding: 0 20px; }
-            QComboBox {
-                background-color: #2d2d2d;
-                color: white;
-                border: 1px solid #444;
-                padding: 8px;
-                border-radius: 4px;
-        }
-            QComboBox QAbstractItemView {
-                    background-color: #1e1e1e;
-                    color: white;
-                    selection-background-color: #007acc;
-                    selection-color: white;
-        }
-
-        """)
+        self.setFixedHeight(64)
+        self.current_theme = "dark"
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(20, 0, 20, 0)
+        layout.setSpacing(10)
 
-        # ---------------- LEFT ----------------
+        # ---------------- LEFT: OPEN BUTTONS ----------------
         self.open_image_btn = QPushButton("📄 Open Image")
         self.open_image_btn.clicked.connect(parent.load_image)
 
@@ -59,23 +35,28 @@ class TopBar(QWidget):
         layout.addStretch()
 
         # ---------------- MODEL SELECT ----------------
+        model_label = QLabel("Model:")
         self.model_combo = QComboBox()
         self.model_combo.addItems(["yolov8n.pt", "yolov8s.pt", "yolov8m.pt"])
         self.model_combo.currentTextChanged.connect(parent.on_model_changed)
+        layout.addWidget(model_label)
         layout.addWidget(self.model_combo)
 
         layout.addStretch()
 
-        # ---------------- ANNOTATION ACTIONS DROPDOWN ----------------
+        # ---------------- ANNOTATION ACTIONS ----------------
+        action_label = QLabel("Actions:")
         self.action_combo = QComboBox()
         self.action_combo.addItem("Annotation Actions")
         self.action_combo.addItem("Change Label")
         self.action_combo.addItem("Delete Box")
         self.action_combo.currentIndexChanged.connect(self.on_action_selected)
-
+        layout.addWidget(action_label)
         layout.addWidget(self.action_combo)
 
-        # ---------------- RIGHT BUTTONS ----------------
+        layout.addStretch()
+
+        # ---------------- RIGHT: MAIN BUTTONS ----------------
         self.auto_btn = QPushButton("🤖 Auto Annotate")
         self.auto_btn.clicked.connect(parent.auto_annotate)
 
@@ -97,37 +78,64 @@ class TopBar(QWidget):
         layout.addWidget(self.export_btn)
         layout.addWidget(self.pause_btn)
 
-    # =====================================================
-    # DROPDOWN HANDLER
-    # =====================================================
+        layout.addStretch()
+
+        # ---------------- THEME SWITCHER (TOP RIGHT) ----------------
+        theme_label = QLabel("Theme:")
+        self.theme_combo = QComboBox()
+        self.theme_combo.addItems([t["name"] for t in THEMES.values()])
+        self.theme_combo.currentTextChanged.connect(self.on_theme_changed)
+        layout.addWidget(theme_label)
+        layout.addWidget(self.theme_combo)
+
+        self.apply_theme(self.current_theme)
+
+    def apply_theme(self, theme_name: str):
+        self.current_theme = theme_name
+        self.setStyleSheet(f"""
+            QWidget {{ 
+                background-color: {THEMES[theme_name]['bg']}; 
+                border-bottom: 1px solid {THEMES[theme_name]['border']}; 
+            }}
+            QLabel {{ color: {THEMES[theme_name]['text']}; font-size: 13px; }}
+            QPushButton {{ 
+                background-color: {THEMES[theme_name]['accent']};
+                color: white; border: none; padding: 8px 16px; 
+                border-radius: 6px; font-size: 14px; font-weight: 500;
+            }}
+            QPushButton:hover {{ background-color: {THEMES[theme_name]['accent_hover']}; }}
+            QComboBox {{ 
+                background-color: {THEMES[theme_name]['surface']};
+                color: {THEMES[theme_name]['text']}; 
+                border: 1px solid {THEMES[theme_name]['border']}; 
+                padding: 8px 12px; border-radius: 6px; min-width: 120px;
+            }}
+            QComboBox QAbstractItemView {{ 
+                background-color: {THEMES[theme_name]['surface']};
+                selection-background-color: {THEMES[theme_name]['accent']};
+            }}
+        """)
+
+    def on_theme_changed(self, theme_name):
+        """Find theme key from display name and apply globally"""
+        theme_key = next(k for k, v in THEMES.items() if v["name"] == theme_name)
+        self.parent.apply_global_theme(theme_key)
+
     def on_action_selected(self, index):
         text = self.action_combo.currentText()
-
-        # reset dropdown immediately
-        self.action_combo.setCurrentIndex(0)
+        self.action_combo.setCurrentIndex(0)  # Reset
 
         if text == "Change Label":
             self.parent.edit_selected_box()
-
         elif text == "Delete Box":
             self.parent.delete_selected_box()
 
-        elif text.startswith("Reuse:"):
-            label = text.replace("Reuse:", "").strip()
-            self.parent.apply_label_to_selected_box(label)
-
-    # =====================================================
-    # UPDATE REUSABLE LABELS (CALL FROM MAIN WINDOW)
-    # =====================================================
     def refresh_label_actions(self, labels):
         self.action_combo.blockSignals(True)
         self.action_combo.clear()
-
         self.action_combo.addItem("Annotation Actions")
         self.action_combo.addItem("Change Label")
         self.action_combo.addItem("Delete Box")
-
         for lbl in labels:
             self.action_combo.addItem(f"Reuse: {lbl}")
-
         self.action_combo.blockSignals(False)
