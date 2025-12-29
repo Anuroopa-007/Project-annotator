@@ -9,12 +9,15 @@ def create_data_yaml(dataset_path):
 
     classes = classes_file.read_text().splitlines()
 
+    names_yaml = "\n".join([f"  - {c}" for c in classes])
+
     content = f"""path: {dataset_path.as_posix()}
 train: images/train
 val: images/val
 
 nc: {len(classes)}
-names: {classes}
+names:
+{names_yaml}
 """
 
     (dataset_path / "data.yaml").write_text(content)

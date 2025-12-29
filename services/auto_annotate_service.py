@@ -38,7 +38,8 @@ class AutoAnnotateService:
 
         for box in results.boxes:
             cls_id = int(box.cls[0])
-            label = self.class_names[cls_id]
+            label = self.class_names[cls_id].strip().lower()
+            # label = self.class_names[cls_id]
 
             x, y, w, h = box.xywhn[0].tolist()  # normalized
             predictions.append((label, x, y, w, h))

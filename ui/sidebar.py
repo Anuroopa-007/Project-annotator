@@ -58,6 +58,16 @@ class Sidebar(QWidget):
         self.count_label.setAlignment(Qt.AlignCenter)
         self.count_label.setStyleSheet("color: #888; padding-bottom: 10px;")
         layout.addWidget(self.count_label)
+        # Detected object counts
+        self.detect_label = QLabel("Detected:\n—")
+        self.detect_label.setAlignment(Qt.AlignLeft)
+        self.detect_label.setStyleSheet("""
+            padding: 10px 15px;
+            font-size: 13px;
+            color: #ddd;
+        """)
+        layout.addWidget(self.detect_label)
+
 
         # Thumbnail list
         self.image_list = QListWidget()
@@ -165,3 +175,22 @@ class Sidebar(QWidget):
             item = self.path_to_item[current_path]
             self.image_list.setCurrentItem(item)
             self.image_list.scrollToItem(item)
+
+    def update_detection_counts(self, counts: dict):
+        """
+        counts example:
+        {
+            'car': 3,
+            'bike': 1,
+            'truck': 2
+        }
+        """
+        if not counts:
+            self.detect_label.setText("Detected:\n—")
+            return
+
+        text = "Detected:\n"
+        for cls, num in counts.items():
+            text += f"{cls}: {num}\n"
+
+        self.detect_label.setText(text.strip())
