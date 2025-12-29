@@ -188,10 +188,14 @@ class MainWindow(QMainWindow):
     # SIDEBAR
     # =========================================================
     def load_image_from_list(self, path):
+        if path in self.image_paths:
+            self.current_image_index = self.image_paths.index(path)  # ✅ FIX
+
         self.image_view.scene.clearSelection()
         self.annotation_service.clear()
         self.image_view.load_image(path)
         self.sidebar.highlight_current_image(path)
+
 
     # =========================================================
     # TOPBAR CALLBACKS (DO NOT REMOVE)
@@ -230,9 +234,11 @@ class MainWindow(QMainWindow):
         if self.input_mode == "single":
             img_path = self.image_paths[self.current_image_index]
             preds = service.predict(img_path, conf=0.25)
-            self.image_view.load_image(img_path)
-            self.image_view.scene.clear_annotations()
-            self.image_view.scene.add_auto_boxes(preds)
+
+            scene = self.image_view.scene
+            scene.clear_annotations()        # ✅ only clear boxes
+            scene.add_auto_boxes(preds)      # ✅ draw predictions
+
             self._annotate_frame(preds, img_path)
             self.sidebar.set_status("Image auto-annotated")
             return
@@ -241,9 +247,11 @@ class MainWindow(QMainWindow):
         if self.input_mode == "folder":
             img_path = self.image_paths[self.current_image_index]
             preds = service.predict(img_path, conf=0.25)
-            self.image_view.load_image(img_path)
-            self.image_view.scene.clear_annotations()
-            self.image_view.scene.add_auto_boxes(preds)
+
+            scene = self.image_view.scene
+            scene.clear_annotations()        # ✅ do NOT reload image
+            scene.add_auto_boxes(preds)
+
             self._annotate_frame(preds, img_path)
             self.sidebar.set_status("Current image auto-annotated")
             return
@@ -302,8 +310,8 @@ class MainWindow(QMainWindow):
 
         for cls, x_center, y_center, w_norm, h_norm in predictions:
             if cls not in classes:
-                 continue 
-                # classes.append(cls)
+                #  continue 
+                classes.append(cls)
             cid = classes.index(cls)
 
             xc = x_center
