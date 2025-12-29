@@ -1,120 +1,196 @@
+# sidebar.py
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QPushButton,
-    QGroupBox, QComboBox, QListWidget
+    QWidget, QVBoxLayout, QLabel, QListWidget, QListWidgetItem,
+    QHBoxLayout, QPushButton
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
+from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import QPixmap, QIcon
+import os
+import math
 
 
 class Sidebar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
-        self.setFixedWidth(250)
-
+        self.setFixedWidth(280)
         self.setStyleSheet("""
-            QWidget { background-color: #2c3e50; color: #ecf0f1; }
-            QLabel { color: #ecf0f1; font-size: 14px; }
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                padding: 10px;
-                text-align: left;
+            QWidget { background-color: #1e1e1e; color: #ffffff; }
+            QLabel { color: #aaa; font-size: 13px; padding: 10px; }
+            QListWidget {
+                background-color: #252526;
                 border: none;
-                border-radius: 5px;
-                margin: 2px 5px;
+                outline: none;
             }
-            QPushButton:hover { background-color: #2980b9; }
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #34495e;
-                margin-top: 10px;
-                border-radius: 5px;
+            QListWidget::item {
+                padding: 8px;
+                border-bottom: 1px solid #333;
             }
+            QListWidget::item:selected {
+                background-color: #007acc;
+                border-left: 4px solid #007acc;
+            }
+            QListWidget::item:hover {
+                background-color: #2d2d30;
+            }
+            QPushButton {
+                background-color: #333;
+                color: #ccc;
+                border: none;
+                padding: 8px;
+            }
+            QPushButton:hover { background-color: #444; }
+            QPushButton:disabled { color: #666; }
         """)
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        # ===== TITLE =====
-        title = QLabel("ACV Annotator")
-        title.setFont(QFont("Arial", 16, QFont.Bold))
+        # Title
+        title = QLabel("Images")
+        title.setStyleSheet("font-size: 16px; font-weight: bold; padding: 20px 15px 10px;")
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
 
-        # ===== FILE SECTION =====
-        file_group = QGroupBox("File")
-        file_layout = QVBoxLayout()
+        # Image count
+        self.count_label = QLabel("0 images")
+        self.count_label.setAlignment(Qt.AlignCenter)
+        self.count_label.setStyleSheet("color: #888; padding-bottom: 10px;")
+        layout.addWidget(self.count_label)
+        # Detected object counts
+        self.detect_label = QLabel("Detected:\n—")
+        self.detect_label.setAlignment(Qt.AlignLeft)
+        self.detect_label.setStyleSheet("""
+            padding: 10px 15px;
+            font-size: 13px;
+            color: #ddd;
+        """)
+        layout.addWidget(self.detect_label)
 
-        open_img_btn = QPushButton("📄 Open Image")
-        open_img_btn.clicked.connect(self.parent.load_image)
 
-        open_folder_btn = QPushButton("📁 Open Folder")
-        open_folder_btn.clicked.connect(self.parent.load_folder)
-
-        file_layout.addWidget(open_img_btn)
-        file_layout.addWidget(open_folder_btn)
-        file_group.setLayout(file_layout)
-        layout.addWidget(file_group)
-
-        # ===== IMAGE LIST SECTION (PASTE HERE ✅) =====
-        image_group = QGroupBox("Images")
-        image_layout = QVBoxLayout()
-
+        # Thumbnail list
         self.image_list = QListWidget()
+        self.image_list.setIconSize(QSize(240, 135))  # Wide thumbnails
+        self.image_list.setViewMode(QListWidget.ListMode)
+        self.image_list.setResizeMode(QListWidget.Adjust)
+        self.image_list.setMovement(QListWidget.Static)
+        self.image_list.setSpacing(0)
+
         self.image_list.itemClicked.connect(self.on_image_clicked)
+        layout.addWidget(self.image_list)
 
-        image_layout.addWidget(self.image_list)
-        image_group.setLayout(image_layout)
-        layout.addWidget(image_group)
+        # Pagination
+        pag_layout = QHBoxLayout()
+        pag_layout.setContentsMargins(10, 10, 10, 10)
 
-        # ===== ANNOTATIONS =====
-        # ===== ANNOTATIONS =====
-        ann_group = QGroupBox("Annotations")
-        ann_layout = QVBoxLayout()
+        self.prev_btn = QPushButton("◀ Previous")
+        self.next_btn = QPushButton("Next ▶")
+        self.page_label = QLabel("1 / 1")
 
-        save_btn = QPushButton("💾 Save YOLO")
-        save_btn.clicked.connect(self.parent.save_yolo)
+        self.prev_btn.clicked.connect(self.prev_page)
+        self.next_btn.clicked.connect(self.next_page)
 
-        train_btn = QPushButton("🚀 Train YOLO")
-        train_btn.clicked.connect(self.parent.train_model)
+        pag_layout.addWidget(self.prev_btn)
+        pag_layout.addStretch()
+        pag_layout.addWidget(self.page_label)
+        pag_layout.addStretch()
+        pag_layout.addWidget(self.next_btn)
 
-        ann_layout.addWidget(save_btn)
-        ann_layout.addWidget(train_btn)
+        layout.addLayout(pag_layout)
 
-        ann_group.setLayout(ann_layout)
-        layout.addWidget(ann_group)
-
-
-        # ===== MODELS =====
-        model_group = QGroupBox("Models")
-        model_layout = QVBoxLayout()
-
-        self.model_combo = QComboBox()
-        self.model_combo.addItems(["yolov8n.pt", "yolov8s.pt", "yolov8m.pt"])
-        self.model_combo.currentTextChanged.connect(self.parent.on_model_changed)
-
-        auto_btn = QPushButton("🤖 Auto Annotate")
-        auto_btn.clicked.connect(self.parent.auto_annotate)
-
-        model_layout.addWidget(self.model_combo)
-        model_layout.addWidget(auto_btn)
-        model_group.setLayout(model_layout)
-        layout.addWidget(model_group)
-
-        layout.addStretch()
-
+        # Bottom status
         self.status_label = QLabel("Ready")
         self.status_label.setAlignment(Qt.AlignCenter)
+        self.status_label.setStyleSheet("background-color: #007acc; padding: 10px; font-size: 13px;")
         layout.addWidget(self.status_label)
 
-    # ===== METHODS =====
+        # State
+        self.all_image_paths = []
+        self.current_page = 0
+        self.items_per_page = 6
+        self.path_to_item = {}
+
     def populate_images(self, image_paths):
+        self.all_image_paths = image_paths
+        self.path_to_item.clear()
+        self.current_page = 0
+        self.count_label.setText(f"{len(image_paths)} images")
+        self.update_page()
+
+        if image_paths:
+            self.parent.load_image_from_list(image_paths[0])
+
+    def update_page(self):
         self.image_list.clear()
-        for path in image_paths:
-            self.image_list.addItem(path)
+        self.path_to_item.clear()
+
+        total_pages = max(1, math.ceil(len(self.all_image_paths) / self.items_per_page))
+        self.page_label.setText(f"{self.current_page + 1} / {total_pages}")
+
+        start = self.current_page * self.items_per_page
+        end = start + self.items_per_page
+        page_paths = self.all_image_paths[start:end]
+
+        for path in page_paths:
+            filename = os.path.basename(path)
+            pixmap = QPixmap(path)
+            if pixmap.isNull():
+                continue
+
+            thumb = pixmap.scaled(240, 135, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+            if thumb.width() > 240 or thumb.height() > 135:
+                thumb = thumb.copy((thumb.width()-240)//2, (thumb.height()-135)//2, 240, 135)
+
+            icon = QIcon(thumb)
+            item = QListWidgetItem(icon, filename)
+            item.setData(Qt.UserRole, path)
+            item.setTextAlignment(Qt.AlignCenter)
+
+            self.image_list.addItem(item)
+            self.path_to_item[path] = item
+
+        self.prev_btn.setEnabled(self.current_page > 0)
+        self.next_btn.setEnabled(end < len(self.all_image_paths))
+
+    def prev_page(self):
+        if self.current_page > 0:
+            self.current_page -= 1
+            self.update_page()
+
+    def next_page(self):
+        if (self.current_page + 1) * self.items_per_page < len(self.all_image_paths):
+            self.current_page += 1
+            self.update_page()
 
     def on_image_clicked(self, item):
-        self.parent.load_image_from_list(item.text())
+        path = item.data(Qt.UserRole)
+        self.parent.load_image_from_list(path)
 
     def set_status(self, text):
         self.status_label.setText(text)
+
+    def highlight_current_image(self, current_path):
+        if current_path in self.path_to_item:
+            item = self.path_to_item[current_path]
+            self.image_list.setCurrentItem(item)
+            self.image_list.scrollToItem(item)
+
+    def update_detection_counts(self, counts: dict):
+        """
+        counts example:
+        {
+            'car': 3,
+            'bike': 1,
+            'truck': 2
+        }
+        """
+        if not counts:
+            self.detect_label.setText("Detected:\n—")
+            return
+
+        text = "Detected:\n"
+        for cls, num in counts.items():
+            text += f"{cls}: {num}\n"
+
+        self.detect_label.setText(text.strip())
