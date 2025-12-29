@@ -1,13 +1,13 @@
 from PyQt5.QtGui import QColor
 
 CLASS_COLORS = {
-    "person": QColor(0, 0, 255),
-    "car": QColor(0, 255, 0),
-    "bus": QColor(255, 165, 0),
-    "truck": QColor(255, 0, 0),
-    "bike": QColor(128, 0, 128),
-    "dog": QColor(139, 69, 19),
+    "person": QColor(0, 128, 255),  # Softer blue
+    "car": QColor(0, 255, 128),     # Lighter green
+    "bus": QColor(255, 193, 7),     # Amber
+    "truck": QColor(220, 53, 69),   # Reddish
+    "bike": QColor(134, 48, 167),   # Purple
+    "dog": QColor(153, 102, 51),    # Brownish
 }
 
 def get_color(label):
-    return CLASS_COLORS.get(label.lower(), QColor(255, 255, 0))
+    return CLASS_COLORS.get(label.lower(), QColor(255, 193, 7))  # Default amber

@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (
     QMessageBox, QFileDialog, QProgressBar
 )
 from PyQt5.QtCore import QTimer
-from PyQt5.QtGui import QImage
+from PyQt5.QtGui import QImage, QFont
 
 from ui.canvas.image_view import ImageView
 from ui.sidebar import Sidebar
@@ -20,6 +20,7 @@ from services.auto_annotate_service import AutoAnnotateService
 from services.dataset_service import create_data_yaml, save_classes
 from services.training_service import train_yolo
 from services.export_service import export_yolo_dataset
+from ui.themes import THEMES, get_stylesheet  # ← ADD THIS LINE
 
 
 class MainWindow(QMainWindow):
@@ -28,8 +29,26 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("CV Annotator")
         self.resize(1600, 900)
+        self.current_theme = "dark"
+        
+        # self.setStyleSheet("""
+        #     QMainWindow {
+        #         background-color: #121212;
+        #     }
+        #     QProgressBar {
+        #         background-color: #1E1E1E;
+        #         color: #E0E0E0;
+        #         border: 1px solid #2A2A2A;
+        #         border-radius: 4px;
+        #         text-align: center;
+        #     }
+        #     QProgressBar::chunk {
+        #         background-color: #007BFF;
+        #     }
+        # """)
 
         # ---------------- STATE ----------------
+        # ---------------- STATE (keep all your existing state) ----------------
         self.current_model_path = "models/pretrained/yolov8n.pt"
         self.image_paths = []
         self.current_image_index = 0
@@ -37,38 +56,37 @@ class MainWindow(QMainWindow):
         self.annotate_mode = "current"
         self.is_paused = False
         self.timer = None
-
-        # Video
         self.video_cap = None
         self.video_timer = None
-
-        # FPS
         self._last_tick = cv2.getTickCount()
         self._fps = 0
 
-        # ---------------- SERVICES ----------------
+    # ---------------- SERVICES ----------------
         self.annotation_service = AnnotationService()
         self.image_view = ImageView(self.annotation_service)
 
-        # ---------------- UI ----------------
+    # ---------------- UI ----------------
         central_widget = QWidget()
         main_layout = QVBoxLayout(central_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
 
         self.topbar = TopBar(self)
         main_layout.addWidget(self.topbar)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
+        self.progress_bar.setFixedHeight(4)
         main_layout.addWidget(self.progress_bar)
 
         content_layout = QHBoxLayout()
         self.sidebar = Sidebar(self)
-
         content_layout.addWidget(self.sidebar)
         content_layout.addWidget(self.image_view, stretch=1)
-
         main_layout.addLayout(content_layout)
         self.setCentralWidget(central_widget)
+        # ✅ NEW: Apply initial theme
+        self.apply_global_theme(self.current_theme)
 
     # =========================================================
     # LOADERS
@@ -542,4 +560,19 @@ class MainWindow(QMainWindow):
             self.parent.apply_label_to_selected_box(label)
 
         self.action_combo.setCurrentIndex(0)
-
+    def apply_global_theme(self, theme_name: str):
+        """Apply theme to entire application"""
+        self.current_theme = theme_name
+    
+    # Main window
+        stylesheet = get_stylesheet(theme_name)
+        self.setStyleSheet(stylesheet)
+    
+    # Sidebar
+        self.sidebar.apply_theme(theme_name)
+    
+    # Topbar
+        self.topbar.apply_theme(theme_name)
+    
+    # Status message
+        self.sidebar.set_status(f"Theme: {THEMES[theme_name]['name']} applied ✨")
