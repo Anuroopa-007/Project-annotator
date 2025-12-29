@@ -310,8 +310,9 @@ class MainWindow(QMainWindow):
 
         for cls, x_center, y_center, w_norm, h_norm in predictions:
             if cls not in classes:
-                #  continue 
-                classes.append(cls)
+                print(f"[WARN] Unknown class skipped: {cls}")
+                continue 
+                # classes.append(cls)
             cid = classes.index(cls)
 
             xc = x_center
@@ -353,7 +354,13 @@ class MainWindow(QMainWindow):
             label = label.strip().lower()
 
             if label not in classes:
-                classes.append(label)
+                QMessageBox.warning(
+        self,
+        "Invalid Label",
+        f"Label '{label}' not found in classes.txt"
+    )
+                continue
+                # classes.append(label)
 
             cls_id = classes.index(label)
 
