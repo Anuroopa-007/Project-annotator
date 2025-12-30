@@ -67,6 +67,12 @@ class TopBar(QWidget):
         layout.addWidget(self.action_combo)
 
         layout.addStretch()
+        # Add this button after "Actions:" section
+        polygon_btn = QPushButton("Polygon Mode")
+        polygon_btn.setCheckable(True)
+        polygon_btn.setChecked(False)
+        polygon_btn.toggled.connect(parent.toggle_polygon_mode)
+        layout.addWidget(polygon_btn)
 
         # Main buttons — CREATE FIRST, THEN CONNECT
         auto_btn = QPushButton("🤖 Auto Annotate")
