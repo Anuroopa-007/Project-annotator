@@ -1,6 +1,19 @@
 # themes.py
 
 THEMES = {
+    "cvat_dark": {  # New default: CVAT-inspired
+        "name": "CVAT Dark",
+        "bg": "#1e1e1e",
+        "surface": "#252525",
+        "surface2": "#2d2d2d",
+        "text": "#e0e0e0",
+        "text_secondary": "#aaaaaa",
+        "accent": "#ff6200",      # CVAT orange
+        "accent_hover": "#e55a00",
+        "border": "#333333",
+        "status": "#ff6200",
+        "selected": "#ff6200",
+    },
     "dark": {
         "name": "Dark",
         "bg": "#121212",
@@ -129,4 +142,6 @@ def get_stylesheet(theme_name: str) -> str:
         background-color: {t['accent']};
         border-radius: 4px;
     }}
+    QToolButton {{ background: transparent; color: {t['text']}; padding: 8px; border-radius: 4px; }}
+    QToolButton:hover {{ background: {t['surface2']}; }}
     """
