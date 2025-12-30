@@ -21,6 +21,7 @@ from services.dataset_service import create_data_yaml, save_classes
 from services.training_service import train_yolo
 from services.export_service import export_yolo_dataset
 from ui.themes import THEMES, get_stylesheet  # ← ADD THIS LINE
+from ui.right_panel import RightPanel
 
 
 class MainWindow(QMainWindow):
@@ -82,9 +83,12 @@ class MainWindow(QMainWindow):
         content_layout = QHBoxLayout()
         self.sidebar = Sidebar(self)
         content_layout.addWidget(self.sidebar)
+        self.right_panel = RightPanel(self)
+        content_layout.addWidget(self.right_panel)
         content_layout.addWidget(self.image_view, stretch=1)
         main_layout.addLayout(content_layout)
         self.setCentralWidget(central_widget)
+        self.current_theme = "cvat_dark"
         # ✅ NEW: Apply initial theme
         self.apply_global_theme(self.current_theme)
 
@@ -590,4 +594,13 @@ class MainWindow(QMainWindow):
         self.image_view.scene.load_image(self.image_view.image_path)
         for label, rect in self.annotation_service.annotations:
             self.image_view.scene.addItem(BBoxItem(rect, label))
+
+    def apply_global_theme_by_name(self, name):
+        key = next(k for k, v in THEMES.items() if v["name"] == name)
+        self.apply_global_theme(key)
+
+# Update right panel on annotations
+    def refresh_objects(self):
+        self.right_panel.update_objects(self.annotation_service.annotations)
+# Call this after any annotation change
 

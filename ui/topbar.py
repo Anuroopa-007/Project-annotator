@@ -1,156 +1,122 @@
-# ui/topbar.py - COMPLETE REPLACEMENT (Theme Support + All Buttons)
+# ui/topbar.py - FINAL FIXED & CVAT PROFESSIONAL STYLE
 from PyQt5.QtWidgets import (
-    QWidget, QHBoxLayout, QPushButton, QLabel, QComboBox
+    QWidget, QHBoxLayout, QPushButton, QLabel, QComboBox,
+    QToolButton, QMenu
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
-import os
-from ui.themes import THEMES, get_stylesheet  # Correct path
-from PyQt5.QtWidgets import QToolButton
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QMenu
-
-
+from ui.themes import THEMES
 
 class TopBar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
-        self.setFixedHeight(64)
-        self.current_theme = "dark"
+        self.setFixedHeight(52)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(20, 0, 20, 0)
-        layout.setSpacing(10)
+        layout.setContentsMargins(16, 0, 16, 0)
+        layout.setSpacing(12)
 
-        # ---------------- LEFT: OPEN BUTTONS ----------------
-        self.open_image_btn = QPushButton("📄 Open Image")
-        self.open_image_btn.clicked.connect(parent.load_image)
+        # File Menu
+        file_menu = QMenu()
+        file_menu.addAction("📄 Open Image", parent.load_image)
+        file_menu.addAction("📁 Open Folder", parent.load_folder)
+        file_menu.addAction("🎥 Open Video", parent.load_video)
+        file_btn = QToolButton()
+        file_btn.setText("File")
+        file_btn.setMenu(file_menu)
+        file_btn.setPopupMode(QToolButton.InstantPopup)
+        file_btn.setStyleSheet("font-weight: bold;")
+        layout.addWidget(file_btn)
 
-        self.open_folder_btn = QPushButton("📁 Open Folder")
-        self.open_folder_btn.clicked.connect(parent.load_folder)
-
-        self.open_video_btn = QPushButton("🎥 Open Video")
-        self.open_video_btn.clicked.connect(parent.load_video)
-
-        layout.addWidget(self.open_image_btn)
-        layout.addWidget(self.open_folder_btn)
-        layout.addWidget(self.open_video_btn)
-
-        layout.addStretch()
-
-     # ---------------- VIEW TOOLS MENU ----------------
-        self.view_tools_btn = QToolButton()
-        self.view_tools_btn.setText("🛠 View")
-        self.view_tools_btn.setPopupMode(QToolButton.InstantPopup)
-
-        view_menu = QMenu(self) 
-
-        view_menu.addAction("➕ Zoom In", parent.image_view.zoom_in)
-        view_menu.addAction("➖ Zoom Out", parent.image_view.zoom_out)
-        view_menu.addAction("⤾ Reset View", parent.image_view.reset_zoom)
+        # View Menu
+        view_menu = QMenu()
+        view_menu.addAction("➕ Zoom In", lambda: parent.image_view.scale(1.25, 1.25))
+        view_menu.addAction("➖ Zoom Out", lambda: parent.image_view.scale(0.8, 0.8))
+        view_menu.addAction("🔄 Reset View", lambda: parent.image_view.resetTransform())
         view_menu.addSeparator()
         view_menu.addAction("↶ Undo", parent.undo_action)
         view_menu.addAction("↷ Redo", parent.redo_action)
-
-# (optional future)
-# view_menu.addSeparator()
-# view_menu.addAction("✂ Crop", parent.crop_mode)
-
-        self.view_tools_btn.setMenu(view_menu)
-        layout.addWidget(self.view_tools_btn)
-
-
-        # ---------------- MODEL SELECT ----------------
-        model_label = QLabel("Model:")
-        self.model_combo = QComboBox()
-        self.model_combo.addItems(["yolov8n.pt", "yolov8s.pt", "yolov8m.pt"])
-        self.model_combo.currentTextChanged.connect(parent.on_model_changed)
-        layout.addWidget(model_label)
-        layout.addWidget(self.model_combo)
+        view_btn = QToolButton()
+        view_btn.setText("View")
+        view_btn.setMenu(view_menu)
+        view_btn.setPopupMode(QToolButton.InstantPopup)
+        view_btn.setStyleSheet("font-weight: bold;")
+        layout.addWidget(view_btn)
 
         layout.addStretch()
 
-        # ---------------- ANNOTATION ACTIONS ----------------
-        action_label = QLabel("Actions:")
-        self.action_combo = QComboBox()
+        # Model
+        layout.addWidget(QLabel("Model:"))
+        model_combo = QComboBox()
+        model_combo.addItems(["yolov8n.pt", "yolov8s.pt", "yolov8m.pt"])
+        model_combo.currentTextChanged.connect(parent.on_model_changed)
+        layout.addWidget(model_combo)
+
+        layout.addStretch()
+
+        # Actions dropdown
+        actions_label = QLabel("Actions:")
+        self.action_combo = QComboBox()  # ← Save as instance variable
         self.action_combo.addItem("Annotation Actions")
         self.action_combo.addItem("Change Label")
         self.action_combo.addItem("Delete Box")
+        # ✅ FIXED: Connect to self.on_action_selected (not parent.topbar)
         self.action_combo.currentIndexChanged.connect(self.on_action_selected)
-        layout.addWidget(action_label)
+        layout.addWidget(actions_label)
         layout.addWidget(self.action_combo)
 
         layout.addStretch()
 
-        # ---------------- RIGHT: MAIN BUTTONS ----------------
-        self.auto_btn = QPushButton("🤖 Auto Annotate")
-        self.auto_btn.clicked.connect(parent.auto_annotate)
+        # Main buttons — CREATE FIRST, THEN CONNECT
+        auto_btn = QPushButton("🤖 Auto Annotate")
+        auto_btn.clicked.connect(parent.auto_annotate)
+        layout.addWidget(auto_btn)
 
-        self.save_btn = QPushButton("💾 Save YOLO")
-        self.save_btn.clicked.connect(parent.save_yolo)
+        save_btn = QPushButton("💾 Save YOLO")
+        save_btn.clicked.connect(parent.save_yolo)
+        layout.addWidget(save_btn)
 
-        self.train_btn = QPushButton("🚀 Train YOLO")
-        self.train_btn.clicked.connect(parent.train_model)
+        train_btn = QPushButton("🚀 Train")
+        train_btn.clicked.connect(parent.train_model)
+        layout.addWidget(train_btn)
 
-        self.export_btn = QPushButton("📦 Export YOLO")
-        self.export_btn.clicked.connect(parent.export_dataset)
+        export_btn = QPushButton("📦 Export")
+        export_btn.clicked.connect(parent.export_dataset)
+        layout.addWidget(export_btn)
 
-        self.pause_btn = QPushButton("⏸ Pause/Resume")
-        self.pause_btn.clicked.connect(parent.pause_resume)
-
-        layout.addWidget(self.auto_btn)
-        layout.addWidget(self.save_btn)
-        layout.addWidget(self.train_btn)
-        layout.addWidget(self.export_btn)
-        layout.addWidget(self.pause_btn)
+        pause_btn = QPushButton("⏸ Pause/Resume")
+        pause_btn.clicked.connect(parent.pause_resume)
+        layout.addWidget(pause_btn)
 
         layout.addStretch()
 
-        # ---------------- THEME SWITCHER (TOP RIGHT) ----------------
-        theme_label = QLabel("Theme:")
-        self.theme_combo = QComboBox()
-        self.theme_combo.addItems([t["name"] for t in THEMES.values()])
-        self.theme_combo.currentTextChanged.connect(self.on_theme_changed)
-        layout.addWidget(theme_label)
-        layout.addWidget(self.theme_combo)
+        # Theme switcher
+        layout.addWidget(QLabel("Theme:"))
+        theme_combo = QComboBox()
+        theme_combo.addItems([v["name"] for v in THEMES.values()])
+        theme_combo.setCurrentText("CVAT Dark")
+        theme_combo.currentTextChanged.connect(parent.apply_global_theme_by_name)
+        layout.addWidget(theme_combo)
 
-        self.apply_theme(self.current_theme)
+        # Apply initial theme
+        self.apply_theme("cvat_dark")
 
-    def apply_theme(self, theme_name: str):
-        self.current_theme = theme_name
+    def apply_theme(self, theme_name):
+        t = THEMES[theme_name]
         self.setStyleSheet(f"""
-            QWidget {{ 
-                background-color: {THEMES[theme_name]['bg']}; 
-                border-bottom: 1px solid {THEMES[theme_name]['border']}; 
-            }}
-            QLabel {{ color: {THEMES[theme_name]['text']}; font-size: 13px; }}
-            QPushButton {{ 
-                background-color: {THEMES[theme_name]['accent']};
-                color: white; border: none; padding: 8px 16px; 
-                border-radius: 6px; font-size: 14px; font-weight: 500;
-            }}
-            QPushButton:hover {{ background-color: {THEMES[theme_name]['accent_hover']}; }}
-            QComboBox {{ 
-                background-color: {THEMES[theme_name]['surface']};
-                color: {THEMES[theme_name]['text']}; 
-                border: 1px solid {THEMES[theme_name]['border']}; 
-                padding: 8px 12px; border-radius: 6px; min-width: 120px;
-            }}
-            QComboBox QAbstractItemView {{ 
-                background-color: {THEMES[theme_name]['surface']};
-                selection-background-color: {THEMES[theme_name]['accent']};
-            }}
+            QWidget {{ background: {t['bg']}; border-bottom: 1px solid {t['border']}; }}
+            QLabel {{ color: {t['text_secondary']}; font-size: 13px; }}
+            QToolButton {{ background: transparent; color: {t['text']}; font-weight: bold; padding: 8px; }}
+            QToolButton:hover {{ background: {t['surface2']}; border-radius: 4px; }}
+            QPushButton {{ background: {t['accent']}; color: white; border-radius: 6px; padding: 8px 16px; font-weight: 600; }}
+            QPushButton:hover {{ background: {t['accent_hover']}; }}
+            QComboBox {{ background: {t['surface']}; color: {t['text']}; border: 1px solid {t['border']}; border-radius: 6px; padding: 6px; }}
         """)
-
-    def on_theme_changed(self, theme_name):
-        """Find theme key from display name and apply globally"""
-        theme_key = next(k for k, v in THEMES.items() if v["name"] == theme_name)
-        self.parent.apply_global_theme(theme_key)
 
     def on_action_selected(self, index):
         text = self.action_combo.currentText()
-        self.action_combo.setCurrentIndex(0)  # Reset
+        self.action_combo.setCurrentIndex(0)  # Reset dropdown
 
         if text == "Change Label":
             self.parent.edit_selected_box()
