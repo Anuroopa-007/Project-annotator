@@ -576,3 +576,18 @@ class MainWindow(QMainWindow):
     
     # Status message
         self.sidebar.set_status(f"Theme: {THEMES[theme_name]['name']} applied ✨")
+
+    def undo_action(self):
+        self.annotation_service.undo()
+        self.image_view.scene.clear()
+        self.image_view.scene.load_image(self.image_view.image_path)
+        for label, rect in self.annotation_service.annotations:
+            self.image_view.scene.addItem(BBoxItem(rect, label))
+
+    def redo_action(self):
+        self.annotation_service.redo()
+        self.image_view.scene.clear()
+        self.image_view.scene.load_image(self.image_view.image_path)
+        for label, rect in self.annotation_service.annotations:
+            self.image_view.scene.addItem(BBoxItem(rect, label))
+

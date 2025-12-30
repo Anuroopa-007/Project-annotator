@@ -6,6 +6,11 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 import os
 from ui.themes import THEMES, get_stylesheet  # Correct path
+from PyQt5.QtWidgets import QToolButton
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QMenu
+
+
 
 class TopBar(QWidget):
     def __init__(self, parent=None):
@@ -33,6 +38,28 @@ class TopBar(QWidget):
         layout.addWidget(self.open_video_btn)
 
         layout.addStretch()
+
+     # ---------------- VIEW TOOLS MENU ----------------
+        self.view_tools_btn = QToolButton()
+        self.view_tools_btn.setText("🛠 View")
+        self.view_tools_btn.setPopupMode(QToolButton.InstantPopup)
+
+        view_menu = QMenu(self) 
+
+        view_menu.addAction("➕ Zoom In", parent.image_view.zoom_in)
+        view_menu.addAction("➖ Zoom Out", parent.image_view.zoom_out)
+        view_menu.addAction("⤾ Reset View", parent.image_view.reset_zoom)
+        view_menu.addSeparator()
+        view_menu.addAction("↶ Undo", parent.undo_action)
+        view_menu.addAction("↷ Redo", parent.redo_action)
+
+# (optional future)
+# view_menu.addSeparator()
+# view_menu.addAction("✂ Crop", parent.crop_mode)
+
+        self.view_tools_btn.setMenu(view_menu)
+        layout.addWidget(self.view_tools_btn)
+
 
         # ---------------- MODEL SELECT ----------------
         model_label = QLabel("Model:")
